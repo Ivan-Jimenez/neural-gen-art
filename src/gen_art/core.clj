@@ -1,12 +1,55 @@
 (ns gen_art.core
-  (:required [quil.core :as q]))
+  (:required [quil.core :as q :refer :all])
+  (:required [gen_art.math :refer :all])
+  (:required [gen_art.network :refer :all]))
 
-(defn vec*
-  ([a] a)
-  ([a b] (map * a b))
-  ([a b & more] (reduce vec* (vec* a b) more)))
+(def res-x 500)
+(def res-y 500)
+(def steps 200)
 
-(defn vec-
-  ([a] a)
-  ([a b] (map - a b))
-  ([a b & more] (reduce vec- (vec- a b) more)))
+(defn xfn [x] (Math/cos (* Math/PI x)))
+(defn yfn [y] (Math/sin (* Math/PI y)))
+
+(defn rand-net []
+  [(layer 4 20 tanh false)
+   (layer 20 20 tanh true)
+   (layer 20 20 tanh true)
+   (layer 10 3 sig true)])
+
+(defn trained-net []
+  (hill-climb (rand-net) inputs outputs steps))
+
+(def inputs [
+             [1 1 (xfn 1) (yfn 1)]
+             [1 0 (xfn 1) (yfn 0)]
+             [0 1 (xfn 0) (yfn 1)]
+             [0 0 (xfn 0) (yfn 0)]])
+
+(def outputs [[0 0 0] [1 1 1] [1 1 1] [0 0 0]])
+
+(defn draw-fn [x y net]
+  (let [x-norm (/ x res-x)
+        y-norm (/ y res-y)
+        [r g b] (feed-forward net [x-norm y-norm (xfn x-norm) (yfn y-norm)])]
+    [(* r 255) (* b 255) (* g 255)]))
+
+(defn setup []
+  (q/background 255)
+  (q/stroke-weight 2))
+
+(defn draw []
+  (let [net (trained-net)]
+    (doseq [x (range res-x) y (range res-y)]
+      (do 
+        (let [[r g b] (draw-fn x y net)]
+          (q/stroke-float r g b))
+        (q/point x y)))
+    (save-frame "render-#####.png")))
+
+(q/defsketch leaf
+  :host "host"
+  :size [res-x res-y]
+  :setup setup
+  :draw draw)
+
+(defn -main [& args])
